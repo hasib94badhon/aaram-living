@@ -14,7 +14,7 @@ type ProductData = {
   salePrice: number | null;
   stock: number;
   sku: string;
-  imageUrl: string;
+  images: string[];   // ordered: primary first, up to 3
   isActive: boolean;
   isFeatured: boolean;
 };
@@ -41,6 +41,7 @@ export default function EditProductForm({
       <input type="hidden" name="id" value={product.id} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
         {/* Name */}
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -90,9 +91,7 @@ export default function EditProductForm({
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
           {state?.errors?.categoryId && (
@@ -158,15 +157,26 @@ export default function EditProductForm({
           />
         </div>
 
-        {/* Image URL */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-          <input
-            name="imageUrl"
-            type="url"
-            defaultValue={product.imageUrl}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+        {/* Images */}
+        <div className="sm:col-span-2 space-y-3">
+          <p className="text-sm font-medium text-gray-700">
+            Product Images
+            <span className="ml-1 text-xs text-gray-400 font-normal">(up to 3 URLs — first is the main image)</span>
+          </p>
+          {(["imageUrl1", "imageUrl2", "imageUrl3"] as const).map((field, i) => (
+            <div key={field} className="flex items-center gap-3">
+              <span className="text-xs font-medium text-gray-500 w-16 shrink-0">
+                {i === 0 ? "Main" : `Image ${i + 1}`}
+              </span>
+              <input
+                name={field}
+                type="url"
+                placeholder="https://..."
+                defaultValue={product.images[i] ?? ""}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          ))}
         </div>
 
         {/* Description */}

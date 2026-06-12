@@ -36,7 +36,9 @@ export async function createProduct(
   const salePrice = salePriceRaw ? parseFloat(salePriceRaw) : null;
   const stock = parseInt(formData.get("stock") as string) || 0;
   const sku = (formData.get("sku") as string)?.trim() || null;
-  const imageUrl = (formData.get("imageUrl") as string)?.trim() || null;
+  const imageUrl1 = (formData.get("imageUrl1") as string)?.trim() || null;
+  const imageUrl2 = (formData.get("imageUrl2") as string)?.trim() || null;
+  const imageUrl3 = (formData.get("imageUrl3") as string)?.trim() || null;
   const isActive = formData.get("isActive") === "on";
   const isFeatured = formData.get("isFeatured") === "on";
 
@@ -50,6 +52,10 @@ export async function createProduct(
   const existing = await prisma.product.findUnique({ where: { slug } });
   if (existing) return { errors: { slug: ["This slug is already taken"] } };
 
+  const imageData = [imageUrl1, imageUrl2, imageUrl3]
+    .filter(Boolean)
+    .map((url, i) => ({ url: url!, isPrimary: i === 0 }));
+
   await prisma.product.create({
     data: {
       name,
@@ -62,9 +68,7 @@ export async function createProduct(
       isActive,
       isFeatured,
       categoryId,
-      ...(imageUrl
-        ? { images: { create: { url: imageUrl, isPrimary: true } } }
-        : {}),
+      ...(imageData.length > 0 ? { images: { create: imageData } } : {}),
     },
   });
 
@@ -89,7 +93,9 @@ export async function updateProduct(
   const salePrice = salePriceRaw ? parseFloat(salePriceRaw) : null;
   const stock = parseInt(formData.get("stock") as string) || 0;
   const sku = (formData.get("sku") as string)?.trim() || null;
-  const imageUrl = (formData.get("imageUrl") as string)?.trim() || null;
+  const imageUrl1 = (formData.get("imageUrl1") as string)?.trim() || null;
+  const imageUrl2 = (formData.get("imageUrl2") as string)?.trim() || null;
+  const imageUrl3 = (formData.get("imageUrl3") as string)?.trim() || null;
   const isActive = formData.get("isActive") === "on";
   const isFeatured = formData.get("isFeatured") === "on";
 
@@ -109,20 +115,13 @@ export async function updateProduct(
     data: { name, slug, description, price, salePrice, stock, sku, isActive, isFeatured, categoryId },
   });
 
-  if (imageUrl) {
-    const primary = await prisma.productImage.findFirst({
-      where: { productId: id, isPrimary: true },
-    });
-    if (primary) {
-      await prisma.productImage.update({
-        where: { id: primary.id },
-        data: { url: imageUrl },
-      });
-    } else {
-      await prisma.productImage.create({
-        data: { productId: id, url: imageUrl, isPrimary: true },
-      });
-    }
+  // Replace all images with the new set (max 3)
+  await prisma.productImage.deleteMany({ where: { productId: id } });
+  const imageData = [imageUrl1, imageUrl2, imageUrl3]
+    .filter(Boolean)
+    .map((url, i) => ({ url: url!, isPrimary: i === 0, productId: id }));
+  if (imageData.length > 0) {
+    await prisma.productImage.createMany({ data: imageData });
   }
 
   revalidatePath("/admin/products");

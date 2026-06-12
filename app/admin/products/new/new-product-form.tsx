@@ -12,17 +12,14 @@ function toSlug(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-export default function NewProductForm({
-  categories,
-}: {
-  categories: Category[];
-}) {
+export default function NewProductForm({ categories }: { categories: Category[] }) {
   const [state, action, pending] = useActionState(createProduct, undefined);
   const [slug, setSlug] = useState("");
 
   return (
     <form action={action} className="bg-white rounded-xl shadow-sm p-6 space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
         {/* Name */}
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -44,9 +41,7 @@ export default function NewProductForm({
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Slug <span className="text-red-500">*</span>
-            <span className="ml-1 text-xs text-gray-400 font-normal">
-              (used in URL — auto-filled)
-            </span>
+            <span className="ml-1 text-xs text-gray-400 font-normal">(used in URL — auto-filled)</span>
           </label>
           <input
             name="slug"
@@ -73,15 +68,11 @@ export default function NewProductForm({
           >
             <option value="">Select category</option>
             {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
           {state?.errors?.categoryId && (
-            <p className="mt-1 text-xs text-red-600">
-              {state.errors.categoryId[0]}
-            </p>
+            <p className="mt-1 text-xs text-red-600">{state.errors.categoryId[0]}</p>
           )}
         </div>
 
@@ -89,9 +80,7 @@ export default function NewProductForm({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             SKU
-            <span className="ml-1 text-xs text-gray-400 font-normal">
-              (optional)
-            </span>
+            <span className="ml-1 text-xs text-gray-400 font-normal">(optional)</span>
           </label>
           <input
             name="sku"
@@ -114,9 +103,7 @@ export default function NewProductForm({
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           {state?.errors?.price && (
-            <p className="mt-1 text-xs text-red-600">
-              {state.errors.price[0]}
-            </p>
+            <p className="mt-1 text-xs text-red-600">{state.errors.price[0]}</p>
           )}
         </div>
 
@@ -124,9 +111,7 @@ export default function NewProductForm({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Sale Price (৳)
-            <span className="ml-1 text-xs text-gray-400 font-normal">
-              (optional)
-            </span>
+            <span className="ml-1 text-xs text-gray-400 font-normal">(optional)</span>
           </label>
           <input
             name="salePrice"
@@ -139,9 +124,7 @@ export default function NewProductForm({
 
         {/* Stock */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Stock Quantity
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
           <input
             name="stock"
             type="number"
@@ -151,27 +134,30 @@ export default function NewProductForm({
           />
         </div>
 
-        {/* Image URL */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Image URL
-            <span className="ml-1 text-xs text-gray-400 font-normal">
-              (optional)
-            </span>
-          </label>
-          <input
-            name="imageUrl"
-            type="url"
-            placeholder="https://..."
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+        {/* Images */}
+        <div className="sm:col-span-2 space-y-3">
+          <p className="text-sm font-medium text-gray-700">
+            Product Images
+            <span className="ml-1 text-xs text-gray-400 font-normal">(up to 3 URLs)</span>
+          </p>
+          {(["imageUrl1", "imageUrl2", "imageUrl3"] as const).map((field, i) => (
+            <div key={field} className="flex items-center gap-3">
+              <span className="text-xs font-medium text-gray-500 w-16 shrink-0">
+                {i === 0 ? "Main" : `Image ${i + 1}`}
+              </span>
+              <input
+                name={field}
+                type="url"
+                placeholder="https://..."
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          ))}
         </div>
 
         {/* Description */}
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
           <textarea
             name="description"
             rows={4}

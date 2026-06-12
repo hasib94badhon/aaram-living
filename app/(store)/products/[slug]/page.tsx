@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import AddToCartForm from "./_components/add-to-cart-form";
 import BuyNowButton from "./_components/buy-now-button";
 import ViewTracker from "./_components/view-tracker";
+import ImageGallery from "./_components/image-gallery";
 import CarouselCard from "../../_components/carousel-card";
 
 export async function generateMetadata({
@@ -65,8 +66,6 @@ export default async function ProductDetailPage({
     ? Math.round(((price - salePrice!) / price) * 100)
     : 0;
   const inStock = product.stock > 0;
-  const primaryImage =
-    product.images.find((i) => i.isPrimary) ?? product.images[0];
 
   // Trending status for badge
   const isTrending = product.viewCount >= 20;
@@ -105,66 +104,21 @@ export default async function ProductDetailPage({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 animate-fade-in-up">
           {/* ── Images ───────────────────────────── */}
-          <div className="space-y-3">
-            <div className="relative aspect-square bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-200">
-              {primaryImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={primaryImage.url}
-                  alt={primaryImage.altText ?? product.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-stone-200">
-                  <svg
-                    className="w-20 h-20"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01"
-                    />
-                  </svg>
-                </div>
-              )}
-
-              {/* Hot/Trending overlay */}
-              {(isHot || isTrending) && (
-                <div className="absolute top-4 left-4">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold text-white shadow-lg ${
-                      isHot ? "bg-red-500" : "bg-amber-500"
-                    }`}
-                  >
-                    {isHot ? "🔥 Hot" : "📈 Trending"}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Thumbnails */}
-            {product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                {product.images.map((img) => (
-                  <div
-                    key={img.id}
-                    className="shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-white border border-stone-200 shadow-sm"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={img.url}
-                      alt={img.altText ?? ""}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ImageGallery
+            images={product.images}
+            productName={product.name}
+            badge={
+              (isHot || isTrending) ? (
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold text-white shadow-lg ${
+                    isHot ? "bg-red-500" : "bg-amber-500"
+                  }`}
+                >
+                  {isHot ? "🔥 Hot" : "📈 Trending"}
+                </span>
+              ) : undefined
+            }
+          />
 
           {/* ── Product info ──────────────────────── */}
           <div>
