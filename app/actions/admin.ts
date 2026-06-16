@@ -19,6 +19,29 @@ type FieldErrors = { errors?: Record<string, string[]> } | undefined;
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 
+type MediaPayload = {
+  url: string;
+  mediaType: string;
+  isPrimary: boolean;
+  sortOrder: number;
+};
+
+function parseMediaJson(raw: string | null): MediaPayload[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (m) =>
+        typeof m.url === "string" &&
+        m.url.startsWith("http") &&
+        (m.mediaType === "image" || m.mediaType === "video")
+    );
+  } catch {
+    return [];
+  }
+}
+
 export async function createProduct(
   _state: FieldErrors,
   formData: FormData
@@ -36,11 +59,9 @@ export async function createProduct(
   const salePrice = salePriceRaw ? parseFloat(salePriceRaw) : null;
   const stock = parseInt(formData.get("stock") as string) || 0;
   const sku = (formData.get("sku") as string)?.trim() || null;
-  const imageUrl1 = (formData.get("imageUrl1") as string)?.trim() || null;
-  const imageUrl2 = (formData.get("imageUrl2") as string)?.trim() || null;
-  const imageUrl3 = (formData.get("imageUrl3") as string)?.trim() || null;
   const isActive = formData.get("isActive") === "on";
   const isFeatured = formData.get("isFeatured") === "on";
+  const mediaItems = parseMediaJson(formData.get("mediaJson") as string | null);
 
   const errors: Record<string, string[]> = {};
   if (!name) errors.name = ["Product name is required"];
@@ -51,10 +72,6 @@ export async function createProduct(
 
   const existing = await prisma.product.findUnique({ where: { slug } });
   if (existing) return { errors: { slug: ["This slug is already taken"] } };
-
-  const imageData = [imageUrl1, imageUrl2, imageUrl3]
-    .filter(Boolean)
-    .map((url, i) => ({ url: url!, isPrimary: i === 0 }));
 
   await prisma.product.create({
     data: {
@@ -68,7 +85,18 @@ export async function createProduct(
       isActive,
       isFeatured,
       categoryId,
-      ...(imageData.length > 0 ? { images: { create: imageData } } : {}),
+      ...(mediaItems.length > 0
+        ? {
+            images: {
+              create: mediaItems.map((m) => ({
+                url: m.url,
+                mediaType: m.mediaType,
+                isPrimary: m.isPrimary,
+                sortOrder: m.sortOrder,
+              })),
+            },
+          }
+        : {}),
     },
   });
 
@@ -93,11 +121,9 @@ export async function updateProduct(
   const salePrice = salePriceRaw ? parseFloat(salePriceRaw) : null;
   const stock = parseInt(formData.get("stock") as string) || 0;
   const sku = (formData.get("sku") as string)?.trim() || null;
-  const imageUrl1 = (formData.get("imageUrl1") as string)?.trim() || null;
-  const imageUrl2 = (formData.get("imageUrl2") as string)?.trim() || null;
-  const imageUrl3 = (formData.get("imageUrl3") as string)?.trim() || null;
   const isActive = formData.get("isActive") === "on";
   const isFeatured = formData.get("isFeatured") === "on";
+  const mediaItems = parseMediaJson(formData.get("mediaJson") as string | null);
 
   const errors: Record<string, string[]> = {};
   if (!name) errors.name = ["Product name is required"];
@@ -115,13 +141,20 @@ export async function updateProduct(
     data: { name, slug, description, price, salePrice, stock, sku, isActive, isFeatured, categoryId },
   });
 
-  // Replace all images with the new set (max 3)
+  // The MediaUploader already deleted removed images via /api/admin/upload/delete.
+  // Here we only need to sync the final state: delete any remaining DB records
+  // and recreate from the authoritative mediaJson list.
   await prisma.productImage.deleteMany({ where: { productId: id } });
-  const imageData = [imageUrl1, imageUrl2, imageUrl3]
-    .filter(Boolean)
-    .map((url, i) => ({ url: url!, isPrimary: i === 0, productId: id }));
-  if (imageData.length > 0) {
-    await prisma.productImage.createMany({ data: imageData });
+  if (mediaItems.length > 0) {
+    await prisma.productImage.createMany({
+      data: mediaItems.map((m) => ({
+        url: m.url,
+        mediaType: m.mediaType,
+        isPrimary: m.isPrimary,
+        sortOrder: m.sortOrder,
+        productId: id,
+      })),
+    });
   }
 
   revalidatePath("/admin/products");

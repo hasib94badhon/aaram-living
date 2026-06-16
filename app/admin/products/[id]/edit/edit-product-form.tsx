@@ -2,8 +2,10 @@
 
 import { useActionState, useState } from "react";
 import { updateProduct } from "@/app/actions/admin";
+import MediaUploader, { type MediaItem } from "../../_components/media-uploader";
 
 type Category = { id: number; name: string };
+
 type ProductData = {
   id: number;
   name: string;
@@ -14,9 +16,15 @@ type ProductData = {
   salePrice: number | null;
   stock: number;
   sku: string;
-  images: string[];   // ordered: primary first, up to 3
   isActive: boolean;
   isFeatured: boolean;
+  images: Array<{
+    id: number;
+    url: string;
+    mediaType: string;
+    isPrimary: boolean;
+    sortOrder: number;
+  }>;
 };
 
 function toSlug(text: string) {
@@ -35,6 +43,21 @@ export default function EditProductForm({
 }) {
   const [state, action, pending] = useActionState(updateProduct, undefined);
   const [slug, setSlug] = useState(product.slug);
+  const [mediaList, setMediaList] = useState<MediaItem[]>([]);
+
+  const hasUploading = mediaList.some((m) => m.uploading);
+
+  // Serialize final media state for the Server Action
+  const mediaJson = JSON.stringify(
+    mediaList
+      .filter((m) => m.remoteUrl && !m.uploading && !m.error)
+      .map((m, i) => ({
+        url: m.remoteUrl,
+        mediaType: m.mediaType,
+        isPrimary: m.isPrimary,
+        sortOrder: i,
+      }))
+  );
 
   return (
     <form action={action} className="bg-white rounded-xl shadow-sm p-6 space-y-5">
@@ -157,26 +180,21 @@ export default function EditProductForm({
           />
         </div>
 
-        {/* Images */}
-        <div className="sm:col-span-2 space-y-3">
-          <p className="text-sm font-medium text-gray-700">
-            Product Images
-            <span className="ml-1 text-xs text-gray-400 font-normal">(up to 3 URLs — first is the main image)</span>
+        {/* Media manager */}
+        <div className="sm:col-span-2">
+          <p className="text-sm font-medium text-gray-700 mb-2">
+            Product Media
+            <span className="ml-1 text-xs text-gray-400 font-normal">
+              — removing an image deletes it permanently from storage
+            </span>
           </p>
-          {(["imageUrl1", "imageUrl2", "imageUrl3"] as const).map((field, i) => (
-            <div key={field} className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-500 w-16 shrink-0">
-                {i === 0 ? "Main" : `Image ${i + 1}`}
-              </span>
-              <input
-                name={field}
-                type="url"
-                placeholder="https://..."
-                defaultValue={product.images[i] ?? ""}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          ))}
+          {/* Hidden field carries the full final media state to the Server Action */}
+          <input type="hidden" name="mediaJson" value={mediaJson} />
+          <MediaUploader
+            folder={String(product.id)}
+            initial={product.images}
+            onChange={setMediaList}
+          />
         </div>
 
         {/* Description */}
@@ -216,10 +234,10 @@ export default function EditProductForm({
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || hasUploading}
           className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-colors"
         >
-          {pending ? "Saving…" : "Save Changes"}
+          {hasUploading ? "Waiting for uploads…" : pending ? "Saving…" : "Save Changes"}
         </button>
         <a
           href="/admin/products"

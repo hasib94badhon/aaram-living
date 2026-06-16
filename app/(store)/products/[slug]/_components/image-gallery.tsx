@@ -2,33 +2,56 @@
 
 import { useState } from "react";
 
-type GalleryImage = { id: number; url: string; altText: string | null; isPrimary: boolean };
+type GalleryItem = {
+  id: number;
+  url: string;
+  altText: string | null;
+  isPrimary: boolean;
+  mediaType?: string | null;
+  sortOrder?: number | null;
+};
 
 export default function ImageGallery({
   images,
   productName,
   badge,
 }: {
-  images: GalleryImage[];
+  images: GalleryItem[];
   productName: string;
   badge?: React.ReactNode;
 }) {
-  const primaryIndex = images.findIndex((i) => i.isPrimary);
+  const sorted = [...images].sort((a, b) => {
+    const sa = a.sortOrder ?? 0;
+    const sb = b.sortOrder ?? 0;
+    return sa - sb;
+  });
+  const primaryIndex = sorted.findIndex((i) => i.isPrimary);
   const [active, setActive] = useState(primaryIndex >= 0 ? primaryIndex : 0);
 
-  const current = images[active];
+  const current = sorted[active];
+  const isVideo = current?.mediaType === "video";
 
   return (
     <div className="space-y-3">
-      {/* Main image */}
+      {/* Main display — image or video */}
       <div className="relative aspect-square bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-200">
         {current ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={current.url}
-            alt={current.altText ?? productName}
-            className="w-full h-full object-cover transition-opacity duration-200"
-          />
+          isVideo ? (
+            <video
+              key={current.url}
+              src={current.url}
+              controls
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={current.url}
+              alt={current.altText ?? productName}
+              className="w-full h-full object-cover transition-opacity duration-200"
+            />
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center text-stone-200">
             <svg className="w-20 h-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -37,29 +60,48 @@ export default function ImageGallery({
             </svg>
           </div>
         )}
-        {badge && <div className="absolute top-4 left-4">{badge}</div>}
+        {badge && !isVideo && (
+          <div className="absolute top-4 left-4">{badge}</div>
+        )}
       </div>
 
-      {/* Thumbnails — only shown when there are multiple images */}
-      {images.length > 1 && (
+      {/* Thumbnails — shown when there are 2+ media items */}
+      {sorted.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {images.map((img, i) => (
+          {sorted.map((item, i) => (
             <button
-              key={img.id}
+              key={item.id}
               type="button"
               onClick={() => setActive(i)}
-              className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+              className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all relative ${
                 i === active
                   ? "border-amber-500 shadow-md"
                   : "border-stone-200 hover:border-amber-300"
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.url}
-                alt={img.altText ?? ""}
-                className="w-full h-full object-cover"
-              />
+              {item.mediaType === "video" ? (
+                <>
+                  <video
+                    src={item.url}
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                  />
+                  {/* Play icon overlay for video thumbnails */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.url}
+                  alt={item.altText ?? ""}
+                  className="w-full h-full object-cover"
+                />
+              )}
             </button>
           ))}
         </div>

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createProduct } from "@/app/actions/admin";
+import MediaUploader, { type MediaItem } from "../_components/media-uploader";
 
 type Category = { id: number; name: string };
 
@@ -12,9 +13,31 @@ function toSlug(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+// Stable temp folder per form session — uses product listing + random suffix
+function makeTempFolder() {
+  return `tmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export default function NewProductForm({ categories }: { categories: Category[] }) {
   const [state, action, pending] = useActionState(createProduct, undefined);
   const [slug, setSlug] = useState("");
+  const [mediaList, setMediaList] = useState<MediaItem[]>([]);
+  // Stable folder for this form — keeps the same value across re-renders
+  const [folder] = useState(() => makeTempFolder());
+
+  const hasUploading = mediaList.some((m) => m.uploading);
+
+  // Serialize only fully uploaded items for the Server Action
+  const mediaJson = JSON.stringify(
+    mediaList
+      .filter((m) => m.remoteUrl && !m.uploading && !m.error)
+      .map((m, i) => ({
+        url: m.remoteUrl,
+        mediaType: m.mediaType,
+        isPrimary: m.isPrimary,
+        sortOrder: i,
+      }))
+  );
 
   return (
     <form action={action} className="bg-white rounded-xl shadow-sm p-6 space-y-5">
@@ -134,25 +157,15 @@ export default function NewProductForm({ categories }: { categories: Category[] 
           />
         </div>
 
-        {/* Images */}
-        <div className="sm:col-span-2 space-y-3">
-          <p className="text-sm font-medium text-gray-700">
-            Product Images
-            <span className="ml-1 text-xs text-gray-400 font-normal">(up to 3 URLs)</span>
+        {/* Media uploader */}
+        <div className="sm:col-span-2">
+          <p className="text-sm font-medium text-gray-700 mb-2">
+            Product Media
+            <span className="ml-1 text-xs text-gray-400 font-normal">(3–5 images recommended)</span>
           </p>
-          {(["imageUrl1", "imageUrl2", "imageUrl3"] as const).map((field, i) => (
-            <div key={field} className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-500 w-16 shrink-0">
-                {i === 0 ? "Main" : `Image ${i + 1}`}
-              </span>
-              <input
-                name={field}
-                type="url"
-                placeholder="https://..."
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          ))}
+          {/* Hidden field carries all uploaded media URLs to the Server Action */}
+          <input type="hidden" name="mediaJson" value={mediaJson} />
+          <MediaUploader folder={folder} onChange={setMediaList} />
         </div>
 
         {/* Description */}
@@ -190,10 +203,10 @@ export default function NewProductForm({ categories }: { categories: Category[] 
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || hasUploading}
           className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-colors"
         >
-          {pending ? "Saving…" : "Save Product"}
+          {hasUploading ? "Waiting for uploads…" : pending ? "Saving…" : "Save Product"}
         </button>
         <a
           href="/admin/products"
