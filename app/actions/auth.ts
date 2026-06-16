@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
-import { createSession, deleteSession } from "@/lib/session";
+import { createSession, deleteSession, getSession } from "@/lib/session";
+import { log } from "@/lib/logger";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ type LoginState = { error?: string } | undefined;
 // ─── Signup ──────────────────────────────────────────────────────────────────
 
 export async function signup(
-  state: SignupState,
+  _state: SignupState,
   formData: FormData
 ): Promise<SignupState> {
   const name = (formData.get("name") as string)?.trim();
@@ -44,25 +45,35 @@ export async function signup(
   });
 
   await createSession(user.id, "CUSTOMER");
+  log.auth.signup(email, user.id);
   redirect("/");
 }
 
 // ─── Login ───────────────────────────────────────────────────────────────────
 
 export async function login(
-  state: LoginState,
+  _state: LoginState,
   formData: FormData
 ): Promise<LoginState> {
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
 
+  log.auth.attempt(email);
+
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return { error: "Invalid email or password" };
+  if (!user) {
+    log.auth.failure(email);
+    return { error: "Invalid email or password" };
+  }
 
   const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return { error: "Invalid email or password" };
+  if (!valid) {
+    log.auth.failure(email);
+    return { error: "Invalid email or password" };
+  }
 
   await createSession(user.id, user.role);
+  log.auth.success(email, user.role, user.id);
 
   if (user.role === "ADMIN") {
     redirect("/admin");
@@ -74,6 +85,10 @@ export async function login(
 // ─── Logout ──────────────────────────────────────────────────────────────────
 
 export async function logout(): Promise<never> {
+  const session = await getSession();
+  if (session?.userId) {
+    log.auth.logout(session.userId);
+  }
   await deleteSession();
   redirect("/login");
 }

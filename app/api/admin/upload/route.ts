@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { ftpUpload } from "@/lib/ftp";
 import { randomBytes } from "crypto";
+import { log } from "@/lib/logger";
 
-// Extend Vercel function timeout beyond the default 10 s
 export const maxDuration = 60;
 
 const ALLOWED_IMAGE = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const ALLOWED_VIDEO = new Set(["video/mp4", "video/webm"]);
-const MAX_IMAGE = 4 * 1024 * 1024; // 4 MB raw (→ ~300 KB WebP after sharp)
-const MAX_VIDEO = 3 * 1024 * 1024; // 3 MB (Vercel free body limit ~4.5 MB)
+const MAX_IMAGE = 4 * 1024 * 1024;
+const MAX_VIDEO = 3 * 1024 * 1024;
 
-// GET — health check so you can verify the route is reachable
+// Health check — visit GET /api/admin/upload while logged in to verify the route is reachable
 export async function GET() {
   const session = await getSession();
   if (!session?.userId || session.role !== "ADMIN") {
@@ -21,6 +21,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const start = Date.now();
   try {
     const session = await getSession();
     if (!session?.userId || session.role !== "ADMIN") {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     try {
       form = await req.formData();
     } catch (e) {
-      console.error("[upload] formData parse error:", e);
+      log.error("upload/formData", e);
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
@@ -41,8 +42,6 @@ export async function POST(req: NextRequest) {
     if (!file || !folder) {
       return NextResponse.json({ error: "file and folder are required" }, { status: 400 });
     }
-
-    // Prevent path traversal — only alphanumeric, dash, underscore allowed
     if (!/^[\w-]{1,64}$/.test(folder)) {
       return NextResponse.json({ error: "Invalid folder name" }, { status: 400 });
     }
@@ -67,11 +66,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    log.upload.start(file.name, file.size, mime);
+
     let raw: Buffer;
     try {
       raw = Buffer.from(await file.arrayBuffer());
     } catch (e) {
-      console.error("[upload] arrayBuffer error:", e);
+      log.error("upload/arrayBuffer", e);
       return NextResponse.json({ error: "Failed to read file data" }, { status: 500 });
     }
 
@@ -84,17 +85,21 @@ export async function POST(req: NextRequest) {
 
     if (isImage) {
       try {
-        // Dynamic import avoids any bundling issues — sharp is already auto-externalized
         const sharp = (await import("sharp")).default;
-        uploadBuffer = await sharp(raw)
+        const processed = await sharp(raw)
           .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
           .webp({ quality: 82 })
           .toBuffer();
+        log.upload.sharpDone(raw.length, processed.length);
+        uploadBuffer = processed;
       } catch (e) {
-        console.error("[upload] sharp error:", e);
-        return NextResponse.json({ error: "Image processing failed — is it a valid image?" }, { status: 500 });
+        // Sharp unavailable in this runtime — upload raw file as-is
+        log.upload.sharpSkip(e instanceof Error ? e.message.slice(0, 60) : "unknown error");
+        uploadBuffer = raw;
       }
-      filename = `${ts}-${hex}.webp`;
+      filename = uploadBuffer === raw
+        ? `${ts}-${hex}.${mime.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg"}`
+        : `${ts}-${hex}.webp`;
       mediaType = "image";
     } else {
       uploadBuffer = raw;
@@ -104,14 +109,19 @@ export async function POST(req: NextRequest) {
 
     try {
       const url = await ftpUpload(uploadBuffer, `uploads/products/${folder}/${filename}`);
+      log.upload.success(url, Date.now() - start);
       return NextResponse.json({ url, mediaType });
     } catch (err) {
-      console.error("[upload] FTP error:", err);
-      return NextResponse.json({ error: "FTP upload failed. Check Vercel function logs for details." }, { status: 500 });
+      log.upload.failure("FTP upload failed");
+      log.error("upload/ftp", err);
+      return NextResponse.json(
+        { error: "FTP upload failed. Check Vercel function logs for details." },
+        { status: 500 }
+      );
     }
   } catch (err) {
-    // Catch-all: prevents unhandled exception from returning HTML instead of JSON
-    console.error("[upload] unexpected error:", err);
+    // Catch-all: prevents any unhandled exception from returning HTML instead of JSON
+    log.error("upload/unexpected", err);
     return NextResponse.json({ error: "Unexpected server error" }, { status: 500 });
   }
 }
