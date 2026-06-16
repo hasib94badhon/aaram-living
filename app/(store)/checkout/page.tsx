@@ -18,16 +18,10 @@ export default async function CheckoutPage() {
       items: {
         include: {
           product: {
-            select: {
-              name: true,
-              price: true,
-              salePrice: true,
-              stock: true,
-              id: true,
+            include: {
               images: {
                 where: { isPrimary: true },
                 take: 1,
-                select: { url: true },
               },
             },
           },
@@ -38,7 +32,8 @@ export default async function CheckoutPage() {
 
   if (!cart || cart.items.length === 0) redirect("/cart");
 
-  // Convert Prisma Decimal to plain numbers before passing to client component
+  // Convert all Prisma Decimal/object types to plain primitives before
+  // passing to the client component — avoids RSC serialisation errors
   const items = cart.items.map((item) => ({
     id: item.id,
     quantity: item.quantity,
