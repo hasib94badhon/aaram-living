@@ -51,9 +51,9 @@ export default function ImageGallery({
               src={current.url}
               alt={current.altText ?? productName}
               fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover transition-opacity duration-200"
+              unoptimized
               priority
+              className="object-cover transition-opacity duration-200"
             />
           )
         ) : (
@@ -102,7 +102,7 @@ export default function ImageGallery({
                   src={item.url}
                   alt={item.altText ?? ""}
                   fill
-                  sizes="64px"
+                  unoptimized
                   className="object-cover"
                 />
               )}

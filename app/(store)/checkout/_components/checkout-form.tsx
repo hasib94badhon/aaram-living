@@ -209,7 +209,7 @@ export default function CheckoutForm({ items, subtotal }: Props) {
                         src={item.product.imageUrl}
                         alt=""
                         fill
-                        sizes="40px"
+                        unoptimized
                         className="object-cover"
                       />
                     )}

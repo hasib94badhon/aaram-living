@@ -55,7 +55,7 @@ function CartItemRow({ item }: { item: CartItem }) {
             src={image.url}
             alt={image.altText ?? item.product.name}
             fill
-            sizes="80px"
+            unoptimized
             className="object-cover"
           />
         ) : (

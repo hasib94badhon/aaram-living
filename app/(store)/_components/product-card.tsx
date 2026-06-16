@@ -37,7 +37,7 @@ export default function ProductCard({ product }: { product: Product }) {
             src={image.url}
             alt={image.altText ?? product.name}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw"
+            unoptimized
             className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (

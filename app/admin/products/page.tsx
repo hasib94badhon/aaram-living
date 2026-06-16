@@ -65,7 +65,7 @@ export default async function ProductsPage() {
                               src={p.images[0].url}
                               alt={p.name}
                               fill
-                              sizes="40px"
+                              unoptimized
                               className="object-cover"
                             />
                           </div>
