@@ -101,13 +101,35 @@ export default function MediaUploader({ folder, initial = [], onChange }: Props)
 
       try {
         const res = await fetch("/api/admin/upload", { method: "POST", body: form });
-        const data = await res.json();
+
+        // Parse JSON safely — if the server returns HTML (e.g. timeout page), capture it
+        let data: { url?: string; mediaType?: string; error?: string };
+        try {
+          data = await res.json();
+        } catch {
+          const text = await res.text().catch(() => "");
+          const snippet = text.slice(0, 120).replace(/\s+/g, " ").trim();
+          setItems((prev) => {
+            const next = prev.map((m) =>
+              m.clientId === clientId
+                ? {
+                    ...m,
+                    uploading: false,
+                    error: `Server error ${res.status}${snippet ? ": " + snippet : ""}`,
+                  }
+                : m
+            );
+            onChange(next);
+            return next;
+          });
+          return;
+        }
 
         if (!res.ok) {
           setItems((prev) => {
             const next = prev.map((m) =>
               m.clientId === clientId
-                ? { ...m, uploading: false, error: data.error ?? "Upload failed" }
+                ? { ...m, uploading: false, error: data.error ?? `Upload failed (${res.status})` }
                 : m
             );
             onChange(next);
@@ -119,17 +141,18 @@ export default function MediaUploader({ folder, initial = [], onChange }: Props)
         setItems((prev) => {
           const next = prev.map((m) =>
             m.clientId === clientId
-              ? { ...m, remoteUrl: data.url, uploading: false }
+              ? { ...m, remoteUrl: data.url!, uploading: false }
               : m
           );
           onChange(next);
           return next;
         });
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Network error";
         setItems((prev) => {
           const next = prev.map((m) =>
             m.clientId === clientId
-              ? { ...m, uploading: false, error: "Network error — try again" }
+              ? { ...m, uploading: false, error: `${msg} — try again` }
               : m
           );
           onChange(next);

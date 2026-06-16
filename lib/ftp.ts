@@ -35,7 +35,8 @@ export async function ftpUpload(buffer: Buffer, remotePath: string): Promise<str
     const fullPath = `/${FTP_ROOT}/${remotePath}`;
     const dir = fullPath.substring(0, fullPath.lastIndexOf("/"));
     await client.ensureDir(dir);
-    await client.uploadFrom(Readable.from(buffer), fullPath);
+    // Wrap in array so Readable pushes the buffer as one chunk, not byte-by-byte
+    await client.uploadFrom(Readable.from([buffer]), fullPath);
     return `${MEDIA_BASE}/${remotePath}`;
   } finally {
     client.close();
