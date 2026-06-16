@@ -84,6 +84,8 @@ export async function placeOrder(
 
   const orderNumber = generateOrderNumber();
 
+  // Default transaction timeout is 5 s — too short for Vercel → Hostinger MySQL latency.
+  // 30 s gives enough headroom for the multi-step order creation.
   await prisma.$transaction(async (tx) => {
     const address = await tx.address.create({
       data: { userId: session.userId, fullName, phone, line1, city, district },
@@ -133,7 +135,7 @@ export async function placeOrder(
 
     // Clear cart
     await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-  });
+  }, { timeout: 30000, maxWait: 10000 });
 
   return { success: true, orderNumber };
 }
