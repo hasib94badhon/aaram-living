@@ -19,6 +19,10 @@ function generateOrderNumber(): string {
   return `AL-${ymd}-${rand}`;
 }
 
+function calcShipping(district: string): number {
+  return district.toLowerCase() === "dhaka" ? 80 : 150;
+}
+
 export async function placeOrder(
   _prev: CheckoutState,
   formData: FormData
@@ -31,19 +35,13 @@ export async function placeOrder(
   const line1 = (formData.get("line1") as string)?.trim();
   const city = (formData.get("city") as string)?.trim();
   const district = (formData.get("district") as string)?.trim();
-  const bkashNumber = (formData.get("bkashNumber") as string)?.trim();
-  const transactionId = (formData.get("transactionId") as string)?.trim();
   const notes = (formData.get("notes") as string)?.trim() || null;
 
   if (!fullName || !phone || !line1 || !city || !district) {
     return { error: "Please fill in all required address fields." };
   }
 
-  if (!bkashNumber || !transactionId) {
-    return {
-      error: "Please enter your bKash number and transaction ID.",
-    };
-  }
+  const shippingCost = calcShipping(district);
 
   // Load cart
   const cart = await prisma.cart.findUnique({
@@ -78,7 +76,6 @@ export async function placeOrder(
     }
   }
 
-  const shippingCost = 80;
   const subtotal = cart.items.reduce((sum, item) => {
     const price = Number(item.product.salePrice ?? item.product.price);
     return sum + price * item.quantity;
@@ -87,17 +84,9 @@ export async function placeOrder(
 
   const orderNumber = generateOrderNumber();
 
-  // Create order, address, payment in a transaction
   await prisma.$transaction(async (tx) => {
     const address = await tx.address.create({
-      data: {
-        userId: session.userId,
-        fullName,
-        phone,
-        line1,
-        city,
-        district,
-      },
+      data: { userId: session.userId, fullName, phone, line1, city, district },
     });
 
     const order = await tx.order.create({
@@ -124,14 +113,13 @@ export async function placeOrder(
       },
     });
 
+    // Record Cash on Delivery payment (collected at doorstep)
     await tx.payment.create({
       data: {
         orderId: order.id,
-        method: "bkash",
+        method: "cod",
         status: "PENDING",
         amount: total,
-        bkashNumber,
-        transactionId,
       },
     });
 
