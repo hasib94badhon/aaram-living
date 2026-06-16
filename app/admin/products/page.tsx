@@ -1,8 +1,10 @@
 import { verifyAdmin } from "@/lib/dal";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
-import { deleteProduct, toggleProductVisibility } from "@/app/actions/admin";
+import { deleteProduct } from "@/app/actions/admin";
 import { ConfirmDeleteButton } from "@/app/admin/_components/confirm-delete-button";
+import { ProductToggleButton } from "./_components/product-toggle-button";
+import Image from "next/image";
 
 export default async function ProductsPage() {
   await verifyAdmin();
@@ -58,12 +60,15 @@ export default async function ProductsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {p.images[0] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.images[0].url}
-                            alt={p.name}
-                            className="w-10 h-10 object-cover rounded-lg bg-gray-100 flex-shrink-0"
-                          />
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                            <Image
+                              src={p.images[0].url}
+                              alt={p.name}
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                            />
+                          </div>
                         ) : (
                           <div className="w-10 h-10 bg-gray-100 rounded-lg flex-shrink-0" />
                         )}
@@ -108,21 +113,7 @@ export default async function ProductsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3 whitespace-nowrap">
-                        {/* Visibility toggle */}
-                        <form action={toggleProductVisibility}>
-                          <input type="hidden" name="id" value={p.id} />
-                          <button
-                            type="submit"
-                            title={p.isActive ? "Hide from store" : "Show in store"}
-                            className={`text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors ${
-                              p.isActive
-                                ? "border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-600 hover:bg-red-50"
-                                : "border-green-300 text-green-700 hover:bg-green-50"
-                            }`}
-                          >
-                            {p.isActive ? "Hide" : "Show"}
-                          </button>
-                        </form>
+                        <ProductToggleButton id={p.id} isActive={p.isActive} />
                         <Link
                           href={`/admin/products/${p.id}/edit`}
                           className="text-indigo-600 hover:underline text-sm"

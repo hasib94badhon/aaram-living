@@ -1,16 +1,6 @@
 import { verifyAdmin } from "@/lib/dal";
 import prisma from "@/lib/prisma";
-import { updateOrderStatus } from "@/app/actions/admin";
-
-const STATUS_OPTIONS = [
-  "PENDING",
-  "CONFIRMED",
-  "PROCESSING",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-  "REFUNDED",
-] as const;
+import { OrderStatusForm } from "./_components/order-status-form";
 
 const STATUS_COLOURS: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
@@ -110,30 +100,10 @@ export default async function OrdersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <form action={updateOrderStatus} className="flex gap-2">
-                        <input
-                          type="hidden"
-                          name="orderId"
-                          value={order.id}
-                        />
-                        <select
-                          name="status"
-                          defaultValue={order.status}
-                          className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="submit"
-                          className="bg-indigo-600 text-white px-2.5 py-1 rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors"
-                        >
-                          Save
-                        </button>
-                      </form>
+                      <OrderStatusForm
+                        orderId={order.id}
+                        currentStatus={order.status}
+                      />
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
                       {order.createdAt.toLocaleDateString("en-GB", {

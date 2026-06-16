@@ -5,6 +5,8 @@ import SearchBar from "./_components/search-bar";
 import CategoryStrip from "./_components/category-strip";
 import ProductCarousel from "./_components/product-carousel";
 
+export const revalidate = 300; // rebuild at most every 5 minutes
+
 export const metadata: Metadata = {
   title: "Aaram Living — Discover Premium Home Essentials",
   description:
@@ -12,15 +14,9 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [categories, trendingProducts, categoriesWithProducts] =
+  const [trendingProducts, categoriesWithProducts] =
     await Promise.all([
-      // Active categories sorted by viewCount (most popular first)
-      prisma.category.findMany({
-        where: { isActive: true },
-        orderBy: { viewCount: "desc" },
-      }),
-
-      // Trending: all active products sorted by viewCount
+      // Trending: up to 16 active products sorted by viewCount
       prisma.product.findMany({
         where: { isActive: true },
         include: {
@@ -30,7 +26,7 @@ export default async function HomePage() {
         take: 16,
       }),
 
-      // Active products grouped by active category (sorted by viewCount)
+      // Categories with their top products — single query replaces two
       prisma.category.findMany({
         where: { isActive: true },
         orderBy: { viewCount: "desc" },
@@ -45,6 +41,8 @@ export default async function HomePage() {
       }),
     ]);
 
+  // Derive flat category list — no extra round-trip needed
+  const categories = categoriesWithProducts.map(({ products: _p, ...cat }) => cat);
   const activeCategories = categoriesWithProducts.filter(
     (c) => c.products.length > 0
   );

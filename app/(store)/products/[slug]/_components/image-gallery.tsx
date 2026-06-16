@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 type GalleryItem = {
   id: number;
@@ -45,11 +46,14 @@ export default function ImageGallery({
               className="w-full h-full object-cover"
             />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
+              key={current.url}
               src={current.url}
               alt={current.altText ?? productName}
-              className="w-full h-full object-cover transition-opacity duration-200"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover transition-opacity duration-200"
+              priority
             />
           )
         ) : (
@@ -87,7 +91,6 @@ export default function ImageGallery({
                     muted
                     playsInline
                   />
-                  {/* Play icon overlay for video thumbnails */}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                     <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z" />
@@ -95,11 +98,12 @@ export default function ImageGallery({
                   </div>
                 </>
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={item.url}
                   alt={item.altText ?? ""}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="64px"
+                  className="object-cover"
                 />
               )}
             </button>

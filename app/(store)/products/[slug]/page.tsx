@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
@@ -8,16 +9,25 @@ import ViewTracker from "./_components/view-tracker";
 import ImageGallery from "./_components/image-gallery";
 import CarouselCard from "../../_components/carousel-card";
 
+// React cache deduplicates this call — generateMetadata and the page
+// component both call getProduct(slug) but only one DB round-trip is made.
+const getProduct = cache(async (slug: string) =>
+  prisma.product.findUnique({
+    where: { slug, isActive: true },
+    include: {
+      images: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
+      category: { select: { name: true, slug: true } },
+    },
+  })
+);
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await prisma.product.findUnique({
-    where: { slug },
-    select: { name: true, description: true },
-  });
+  const product = await getProduct(slug);
   if (!product) return { title: "Product not found" };
   return {
     title: `${product.name} — Aaram Living`,
@@ -32,13 +42,7 @@ export default async function ProductDetailPage({
 }) {
   const { slug } = await params;
 
-  const product = await prisma.product.findUnique({
-    where: { slug, isActive: true },
-    include: {
-      images: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
-      category: { select: { name: true, slug: true } },
-    },
-  });
+  const product = await getProduct(slug);
 
   if (!product) notFound();
 

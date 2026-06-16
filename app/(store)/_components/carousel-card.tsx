@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 type CarouselProduct = {
   id: number;
@@ -39,11 +40,12 @@ export default function CarouselCard({
       {/* Image */}
       <div className="relative aspect-square bg-stone-100 overflow-hidden">
         {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={image.url}
             alt={image.altText ?? product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            fill
+            sizes="(max-width: 640px) 176px, 224px"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-stone-200">

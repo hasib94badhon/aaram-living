@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { placeOrder } from "@/app/actions/checkout";
 import Link from "next/link";
+import Image from "next/image";
 
 const DISTRICTS = [
   "Bagerhat", "Bandarban", "Barguna", "Barishal", "Bhola",
@@ -202,10 +203,15 @@ export default function CheckoutForm({ items, subtotal }: Props) {
               const price = item.product.salePrice ?? item.product.price;
               return (
                 <div key={item.id} className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-stone-200 rounded-lg overflow-hidden shrink-0">
+                  <div className="relative w-10 h-10 bg-stone-200 rounded-lg overflow-hidden shrink-0">
                     {item.product.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.product.imageUrl} alt="" className="w-full h-full object-cover" />
+                      <Image
+                        src={item.product.imageUrl}
+                        alt=""
+                        fill
+                        sizes="40px"
+                        className="object-cover"
+                      />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
